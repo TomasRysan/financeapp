@@ -15,12 +15,18 @@ export default function Dividends() {
   const [user, setUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [portfolio, setPortfolio] = useState<PortfolioItem[]>([])
-  const supabase = createClient()
+  const supabaseRef = useRef<ReturnType<typeof createClient> | null>(null)
+
+  if (typeof window !== 'undefined' && !supabaseRef.current) {
+    supabaseRef.current = createClient()
+  }
+
   const router = useRouter()
 
   useEffect(() => {
     const checkUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
+      if (!supabaseRef.current) return
+      const { data: { user } } = await supabaseRef.current.auth.getUser()
       if (!user) {
         router.push('/')
       } else {
@@ -34,7 +40,8 @@ export default function Dividends() {
 
   const loadPortfolio = async (userEmail: string) => {
     try {
-      const { data: portfolioData, error } = await supabase
+      if (!supabaseRef.current) return
+      const { data: portfolioData, error } = await supabaseRef.current
         .from('portfolio')
         .select('ticker, quantity, price')
         .eq('user_email', userEmail)
