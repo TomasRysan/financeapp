@@ -3,7 +3,7 @@
 export const dynamic = 'force-dynamic'
 
 import { Suspense } from 'react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -73,13 +73,21 @@ function BuyStocksContent() {
   const [activeSector, setActiveSector] = useState('Vse')
   const [visibleCount, setVisibleCount] = useState(48)
   const [stocksError, setStocksError] = useState('')
-  const supabase = createClient()
+  const supabaseRef = useRef<ReturnType<typeof createClient> | null>(null)
   const router = useRouter()
   const searchParams = useSearchParams()
 
+  // Initialize Supabase client on first render (client-side only)
+  if (typeof window !== 'undefined' && !supabaseRef.current) {
+    supabaseRef.current = createClient()
+  }
+
+  const supabase = supabaseRef.current
+
   const loadUserCurrency = useCallback(async (userId: string) => {
     try {
-      const { data, error } = await supabase
+      if (!supabaseRef.current) return
+      const { data, error } = await supabaseRef.current
         .from('user_settings')
         .select('currency')
         .eq('user_id', userId)
@@ -91,7 +99,7 @@ function BuyStocksContent() {
     } catch {
       console.log('Currency settings not found')
     }
-  }, [supabase])
+  }, [])
 
   const loadStocks = useCallback(async () => {
     setStocksError('')
@@ -128,9 +136,10 @@ function BuyStocksContent() {
 
   useEffect(() => {
     const checkUser = async () => {
+      if (!supabaseRef.current) return
       const {
         data: { user },
-      } = await supabase.auth.getUser()
+      } = await supabaseRef.current.auth.getUser()
 
       if (!user) {
         router.push('/')
@@ -143,7 +152,7 @@ function BuyStocksContent() {
     }
 
     checkUser()
-  }, [loadUserCurrency, router, supabase])
+  }, [loadUserCurrency, router])
 
   useEffect(() => {
     loadStocks()
@@ -299,8 +308,13 @@ function BuyStocksContent() {
       return
     }
 
+    if (!supabaseRef.current) {
+      alert('Supabase není inicializován. Zkuste stránku obnovit.')
+      return
+    }
+
     try {
-      const { error } = await supabase.from('portfolio').insert({
+      const { error } = await supabaseRef.current.from('portfolio').insert({
         user_email: user.email,
         ticker: selectedTicker,
         quantity: quantityNum,
