@@ -1,5 +1,6 @@
 'use client'
 
+import { Suspense } from 'react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import { useRouter, useSearchParams } from 'next/navigation'
@@ -51,7 +52,7 @@ const FALLBACK_STOCKS: Stock[] = [
   { ticker: 'NFLX', nazev: 'Netflix', sektor: 'Communication Services' },
 ]
 
-export default function BuyStocks() {
+function BuyStocksContent() {
   const [user, setUser] = useState<AuthUser | null>(null)
   const [loading, setLoading] = useState(true)
   const [stocks, setStocks] = useState<Stock[]>([])
@@ -804,5 +805,13 @@ export default function BuyStocks() {
         </div>
       </main>
     </div>
+  )
+}
+
+export default function BuyStocks() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center p-8">Načítám...</div>}>
+      <BuyStocksContent />
+    </Suspense>
   )
 }

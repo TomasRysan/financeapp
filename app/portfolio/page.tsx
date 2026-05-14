@@ -37,7 +37,8 @@ export default function PortfolioManagement() {
       } else {
         setUser(user)
         await loadUserCurrency(user.id)
-        loadPortfolio(user.email)
+        const email = user.email ?? ''
+        loadPortfolio(email)
       }
       setLoading(false)
     }
