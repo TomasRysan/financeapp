@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import { useRouter } from 'next/navigation'
 import { Button } from "@/components/ui/button"
@@ -12,29 +12,38 @@ export default function AuthPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
-  
-  const supabase = createClient()
+  const supabaseRef = useRef<ReturnType<typeof createClient> | null>(null)
+
+  if (typeof window !== 'undefined' && !supabaseRef.current) {
+    supabaseRef.current = createClient()
+  }
+
   const router = useRouter()
 
   // Pokud už je uživatel přihlášen, pošli ho rovnou na dashboard
   useEffect(() => {
     const checkUser = async () => {
-      const { data } = await supabase.auth.getUser()
+      if (!supabaseRef.current) return
+      const { data } = await supabaseRef.current.auth.getUser()
       if (data.user) router.push('/dashboard')
     }
     checkUser()
-  }, [router, supabase.auth])
+  }, [router])
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!supabaseRef.current) {
+      alert('Supabase není inicializován')
+      return
+    }
     setLoading(true)
 
     if (isLogin) {
-      const { error } = await supabase.auth.signInWithPassword({ email, password })
+      const { error } = await supabaseRef.current.auth.signInWithPassword({ email, password })
       if (error) alert(error.message)
       else router.push('/dashboard')
     } else {
-      const { error } = await supabase.auth.signUp({ email, password })
+      const { error } = await supabaseRef.current.auth.signUp({ email, password })
       if (error) alert(error.message)
       else router.push('/dashboard') // Díky vypnutému potvrzení e-mailu jdeme hned dál
     }

@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -26,12 +26,17 @@ export default function PortfolioManagement() {
   const [sellQuantity, setSellQuantity] = useState<string>('')
   const [selling, setSelling] = useState(false)
   const [currency, setCurrency] = useState('CZK')
-  const supabase = createClient()
+  const supabaseRef = useRef<ReturnType<typeof createClient> | null>(null)
+
+  if (typeof window !== 'undefined' && !supabaseRef.current) {
+    supabaseRef.current = createClient()
+  }
   const router = useRouter()
 
   useEffect(() => {
     const checkUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
+      if (!supabaseRef.current) return
+      const { data: { user } } = await supabaseRef.current.auth.getUser()
       if (!user) {
         router.push('/')
       } else {
@@ -47,7 +52,8 @@ export default function PortfolioManagement() {
 
   const loadUserCurrency = async (userId: string) => {
     try {
-      const { data, error } = await supabase
+      if (!supabaseRef.current) return
+      const { data, error } = await supabaseRef.current
         .from('user_settings')
         .select('currency')
         .eq('user_id', userId)
@@ -63,7 +69,8 @@ export default function PortfolioManagement() {
 
   const loadPortfolio = async (userEmail: string) => {
     try {
-      const { data: portfolioData, error } = await supabase
+      if (!supabaseRef.current) return
+      const { data: portfolioData, error } = await supabaseRef.current
         .from('portfolio')
         .select('*')
         .eq('user_email', userEmail)
@@ -118,9 +125,14 @@ export default function PortfolioManagement() {
 
     setSelling(true)
     try {
+      if (!supabaseRef.current) {
+        alert('Supabase není inicializován')
+        return
+      }
+      
       if (sellQty === selectedItem.quantity) {
         // Smazat celou pozici
-        const { error } = await supabase
+        const { error } = await supabaseRef.current
           .from('portfolio')
           .delete()
           .eq('id', selectedItem.id)
@@ -128,7 +140,7 @@ export default function PortfolioManagement() {
         if (error) throw error
       } else {
         // Snížit počet
-        const { error } = await supabase
+        const { error } = await supabaseRef.current
           .from('portfolio')
           .update({ quantity: selectedItem.quantity - sellQty })
           .eq('id', selectedItem.id)

@@ -82,8 +82,6 @@ function BuyStocksContent() {
     supabaseRef.current = createClient()
   }
 
-  const supabase = supabaseRef.current
-
   const loadUserCurrency = useCallback(async (userId: string) => {
     try {
       if (!supabaseRef.current) return

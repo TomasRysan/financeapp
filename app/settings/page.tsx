@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -34,12 +34,18 @@ export default function Settings() {
   const [importPopularMessage, setImportPopularMessage] = useState('')
   const [updateMessage, setUpdateMessage] = useState('')
   const [settingsMessage, setSettingsMessage] = useState('')
-  const supabase = createClient()
+  const supabaseRef = useRef<ReturnType<typeof createClient> | null>(null)
+
+  if (typeof window !== 'undefined' && !supabaseRef.current) {
+    supabaseRef.current = createClient()
+  }
+
   const router = useRouter()
 
   const loadUserSettings = useCallback(async (userId: string) => {
     try {
-      const { data, error } = await supabase
+      if (!supabaseRef.current) return
+      const { data, error } = await supabaseRef.current
         .from('user_settings')
         .select('currency, language')
         .eq('user_id', userId)
@@ -52,13 +58,14 @@ export default function Settings() {
     } catch {
       console.log('Nastaveni nenalezena, pouzivam vychozi')
     }
-  }, [supabase])
+  }, [])
 
   useEffect(() => {
     const checkUser = async () => {
+      if (!supabaseRef.current) return
       const {
         data: { user },
-      } = await supabase.auth.getUser()
+      } = await supabaseRef.current.auth.getUser()
 
       if (!user) {
         router.push('/')
@@ -71,16 +78,16 @@ export default function Settings() {
     }
 
     checkUser()
-  }, [loadUserSettings, router, supabase.auth])
+  }, [loadUserSettings, router])
 
   const handleSaveSettings = async () => {
-    if (!user) return
+    if (!user || !supabaseRef.current) return
 
     setSavingSettings(true)
     setSettingsMessage('Ukladam nastaveni...')
 
     try {
-      const { error } = await supabase
+      const { error } = await supabaseRef.current
         .from('user_settings')
         .upsert(
           {

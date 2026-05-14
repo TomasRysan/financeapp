@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -23,12 +23,18 @@ export default function Dashboard() {
   const [gainLoss, setGainLoss] = useState(0)
   const [currency, setCurrency] = useState('CZK')
   const [allStocks, setAllStocks] = useState<any[]>([])
-  const supabase = createClient()
+  const supabaseRef = useRef<ReturnType<typeof createClient> | null>(null)
+
+  if (typeof window !== 'undefined' && !supabaseRef.current) {
+    supabaseRef.current = createClient()
+  }
+
   const router = useRouter()
 
   useEffect(() => {
     const checkUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
+      if (!supabaseRef.current) return
+      const { data: { user } } = await supabaseRef.current.auth.getUser()
       if (!user) {
         router.push('/')
       } else {
@@ -44,7 +50,8 @@ export default function Dashboard() {
 
   const loadUserCurrency = async (userId: string) => {
     try {
-      const { data, error } = await supabase
+      if (!supabaseRef.current) return
+      const { data, error } = await supabaseRef.current
         .from('user_settings')
         .select('currency')
         .eq('user_id', userId)
@@ -61,7 +68,8 @@ export default function Dashboard() {
   const loadPortfolio = async (userEmail: string) => {
     try {
       // Načtení portfolia z databáze
-      const { data: portfolioData, error } = await supabase
+      if (!supabaseRef.current) return
+      const { data: portfolioData, error } = await supabaseRef.current
         .from('portfolio')
         .select('*')
         .eq('user_email', userEmail)
@@ -120,7 +128,8 @@ export default function Dashboard() {
 
   const loadAllStocks = async () => {
     try {
-      const { data, error } = await supabase
+      if (!supabaseRef.current) return
+      const { data, error } = await supabaseRef.current
         .from('globalni_akcie')
         .select('ticker, nazev, cena, zmena_procenta, sektor')
         .order('cena', { ascending: false })

@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -26,12 +26,18 @@ export default function Marketplace() {
   const [currency, setCurrency] = useState('CZK')
   const [searchQuery, setSearchQuery] = useState('')
   const [stocksError, setStocksError] = useState('')
-  const supabase = createClient()
+  const supabaseRef = useRef<ReturnType<typeof createClient> | null>(null)
+
+  if (typeof window !== 'undefined' && !supabaseRef.current) {
+    supabaseRef.current = createClient()
+  }
+
   const router = useRouter()
 
   const loadUserCurrency = useCallback(async (userId: string) => {
     try {
-      const { data, error } = await supabase
+      if (!supabaseRef.current) return
+      const { data, error } = await supabaseRef.current
         .from('user_settings')
         .select('currency')
         .eq('user_id', userId)
@@ -43,7 +49,7 @@ export default function Marketplace() {
     } catch {
       console.log('Currency settings not found')
     }
-  }, [supabase])
+  }, [])
 
   const loadStocks = useCallback(async () => {
     setStocksError('')
@@ -68,9 +74,10 @@ export default function Marketplace() {
 
   useEffect(() => {
     const checkUser = async () => {
+      if (!supabaseRef.current) return
       const {
         data: { user },
-      } = await supabase.auth.getUser()
+      } = await supabaseRef.current.auth.getUser()
 
       if (!user) {
         router.push('/')
@@ -83,7 +90,7 @@ export default function Marketplace() {
     }
 
     checkUser()
-  }, [loadStocks, loadUserCurrency, router, supabase])
+  }, [loadStocks, loadUserCurrency, router])
 
   const filteredStocks = useMemo(() => {
     if (!searchQuery) return stocks
